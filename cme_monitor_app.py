@@ -1,4 +1,4 @@
-# cme_monitor_app.py - 環境変数対応版
+# cme_monitor_app_enhanced.py - Getcmesymbols.pyの銘柄取得方法を統合
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox
 import requests
@@ -14,11 +14,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class TopstepXAPI:
-    def __init__(self, username, api_key):
+    def __init__(self, username, api_key, debug=False):
         self.username = username
         self.api_key = api_key
         self.base_url = "https://api.topstepx.com/api"
         self.session_token = None
+        self.debug = debug
     
     def authenticate(self):
         """認証"""
@@ -32,7 +33,7 @@ class TopstepXAPI:
             return True
         return False
     
-    def search_contracts(self, search_text="", live=False):
+    def search_contracts(self, search_text="", live=False, silent=False):
         """契約を検索"""
         if not self.session_token:
             return None
@@ -41,10 +42,161 @@ class TopstepXAPI:
         headers = {"Authorization": f"Bearer {self.session_token}", "Content-Type": "application/json"}
         payload = {"searchText": search_text, "live": live}
         
-        response = requests.post(url, json=payload, headers=headers)
+        response = requests.post(url, json=payload, headers=headers, timeout=30)
         if response.status_code == 200:
             return response.json().get('contracts', [])
         return None
+    
+    def get_contracts_by_category(self, log_callback=None):
+        """
+        カテゴリ別に銘柄を取得（Getcmesymbols.pyから移植）
+        より多くの銘柄を取得するための包括的な方法
+        """
+        if not self.session_token:
+            if log_callback:
+                log_callback("❌ 先に authenticate() を実行してください")
+            return None
+        
+        if log_callback:
+            log_callback("📊 カテゴリ別検索で銘柄を取得中...")
+        
+        # 主要なCME先物のプレフィックス（拡張版）
+        categories = {
+            '株価指数': [
+                # Standard E-mini
+                'ES', 'NQ', 'YM', 'RTY', 
+                # International
+                'NKD', 'NIY',  # Nikkei 225
+                # Micro E-mini
+                'MES', 'MNQ', 'M2K', 'MYM',
+                # その他
+                'EMD', 'SSG'
+            ],
+            '通貨': [
+                'EC', '6E', '6J', '6B', '6C', '6A', '6S', '6N', '6M',
+                'DX', 'E7', 'J7', 'AUD', 'CAD', 'CHF', 'EUR', 'GBP', 'JPY', 'NZD'
+            ],
+            'エネルギー': [
+                'CL', 'NG', 'RB', 'HO', 'BZ', 'QG', 'QM',
+                'MCL', 'MGC'  # Micro contracts
+            ],
+            '貴金属': [
+                'GC', 'SI', 'HG', 'PL', 'PA',
+                'QO', 'QI', 'MGC', 'SIL'  # Micro & E-micro
+            ],
+            '農産物': [
+                'ZC', 'ZS', 'ZW', 'ZL', 'ZM', 'ZO', 'ZR',
+                'CT', 'KC', 'SB', 'CC', 'OJ',
+                'DC', 'DY'  # Dairy
+            ],
+            '畜産': ['LE', 'HE', 'GF', 'DC'],
+            '債券': [
+                'ZB', 'ZN', 'ZF', 'ZT', 'UB',
+                'TWE', 'FV'  # Ultra T-Bond, Five Year
+            ],
+            '仮想通貨': ['BTC', 'ETH', 'MBT', 'MET'],
+            'ボラティリティ': ['VX', 'VXM'],
+            'その他': ['BRN', 'LBS']
+        }
+        
+        all_contracts = {}
+        total_found = 0
+        
+        for category, prefixes in categories.items():
+            if log_callback:
+                log_callback(f"  🔍 {category}カテゴリを検索中...")
+            
+            category_contracts = []
+            
+            for prefix in prefixes:
+                contracts = self.search_contracts(search_text=prefix, live=False, silent=True)
+                if contracts:
+                    # 重複を避けるため、本当にそのプレフィックスで始まるものだけを追加
+                    filtered = [c for c in contracts if c.get('name', '').startswith(prefix)]
+                    category_contracts.extend(filtered)
+            
+            # 重複を除去（idで判定）
+            unique_contracts = []
+            seen_ids = set()
+            for contract in category_contracts:
+                contract_id = contract.get('id')
+                if contract_id and contract_id not in seen_ids:
+                    unique_contracts.append(contract)
+                    seen_ids.add(contract_id)
+            
+            all_contracts[category] = unique_contracts
+            total_found += len(unique_contracts)
+            
+            if log_callback:
+                log_callback(f"    ✅ {category}: {len(unique_contracts)}件")
+        
+        if log_callback:
+            log_callback(f"✅ カテゴリ別検索完了: 合計 {total_found}件")
+        
+        return all_contracts
+    
+    def get_all_contracts_comprehensive(self, log_callback=None):
+        """
+        包括的な銘柄取得（2つの方法を組み合わせ）
+        Getcmesymbols.pyの手法を移植
+        """
+        if log_callback:
+            log_callback("🔍 包括的な銘柄取得を開始...")
+        
+        # 方法1: 標準的な全件取得
+        if log_callback:
+            log_callback("  方法1: 空検索で全銘柄取得...")
+        contracts_method1 = self.search_contracts(search_text="", live=False)
+        
+        if contracts_method1:
+            if log_callback:
+                log_callback(f"    ✅ {len(contracts_method1)}件取得")
+        else:
+            contracts_method1 = []
+            if log_callback:
+                log_callback("    ⚠️ 空検索では銘柄が取得できませんでした")
+        
+        # 方法2: カテゴリ別検索
+        if log_callback:
+            log_callback("  方法2: カテゴリ別検索...")
+        contracts_by_category = self.get_contracts_by_category(log_callback)
+        
+        # カテゴリ別の契約を1つのリストにまとめる
+        contracts_method2 = []
+        if contracts_by_category:
+            for category, contracts in contracts_by_category.items():
+                contracts_method2.extend(contracts)
+        
+        # 両方の結果をマージ
+        if log_callback:
+            log_callback(f"  📊 マージ中...")
+            log_callback(f"    方法1: {len(contracts_method1)}件")
+            log_callback(f"    方法2: {len(contracts_method2)}件")
+        
+        all_contracts = self._merge_contract_lists(contracts_method1, contracts_method2)
+        
+        if log_callback:
+            log_callback(f"✅ マージ完了: 合計 {len(all_contracts)}件の銘柄を取得")
+        
+        return all_contracts, contracts_by_category
+    
+    def _merge_contract_lists(self, list1, list2):
+        """2つの契約リストをマージ（重複除去）"""
+        if not list1:
+            return list2 or []
+        if not list2:
+            return list1 or []
+        
+        merged = list1.copy()
+        existing_ids = {c.get('id') for c in list1}
+        
+        for contract in list2:
+            contract_id = contract.get('id')
+            if contract_id and contract_id not in existing_ids:
+                merged.append(contract)
+                existing_ids.add(contract_id)
+        
+        return merged
     
     def get_historical_data(self, contract_id, timeframe="1D", limit=500):
         """履歴データを取得"""
@@ -160,8 +312,8 @@ class ConfigManager:
     def __init__(self, config_file='config.json'):
         self.config_file = config_file
         self.default_config = {
-            "watched_symbols": ['ES', 'NQ', 'GC', 'CL'],
-            "timeframe": "1D",
+            "watched_symbols": ['ESZ5', 'NQZ5', 'GCZ5', 'CLZ5'],
+            "timeframe": "15m",
             "auto_update_interval": 60,
             "debug_mode": False,
             "squeeze_threshold": -10,
@@ -197,18 +349,20 @@ class ConfigManager:
 
 
 class SymbolManagerDialog:
-    """銘柄管理ダイアログ"""
+    """銘柄管理ダイアログ（カテゴリ別表示対応）"""
     
-    def __init__(self, parent, all_contracts, watched_symbols, callback):
+    def __init__(self, parent, all_contracts, contracts_by_category, watched_symbols, callback):
         self.parent = parent
         self.all_contracts = all_contracts
+        self.contracts_by_category = contracts_by_category or {}
         self.watched_symbols = watched_symbols.copy()
         self.callback = callback
+        self.current_category = "全て"
         
         # ダイアログウィンドウを作成
         self.dialog = tk.Toplevel(parent)
-        self.dialog.title("📊 銘柄管理")
-        self.dialog.geometry("700x500")
+        self.dialog.title("📊 銘柄管理（カテゴリ別表示）")
+        self.dialog.geometry("900x600")
         self.dialog.transient(parent)
         self.dialog.grab_set()
         
@@ -222,7 +376,7 @@ class SymbolManagerDialog:
         
         tk.Label(
             title_frame,
-            text="📊 監視銘柄の管理",
+            text="📊 監視銘柄の管理（カテゴリ別表示）",
             font=("Arial", 14, "bold"),
             bg="#2c3e50",
             fg="white"
@@ -235,6 +389,25 @@ class SymbolManagerDialog:
         # 左側:利用可能な銘柄
         left_frame = tk.LabelFrame(main_frame, text="利用可能な銘柄", font=("Arial", 10, "bold"))
         left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
+        
+        # カテゴリ選択フレーム
+        category_frame = tk.Frame(left_frame)
+        category_frame.pack(fill=tk.X, padx=5, pady=5)
+        
+        tk.Label(category_frame, text="📂 カテゴリ:").pack(side=tk.LEFT, padx=5)
+        
+        # カテゴリリスト
+        categories = ["全て"] + sorted(self.contracts_by_category.keys())
+        self.category_var = tk.StringVar(value="全て")
+        category_combo = ttk.Combobox(
+            category_frame,
+            textvariable=self.category_var,
+            values=categories,
+            state="readonly",
+            width=15
+        )
+        category_combo.pack(side=tk.LEFT, padx=5)
+        category_combo.bind('<<ComboboxSelected>>', self.on_category_change)
         
         # 銘柄数表示
         self.available_count_label = tk.Label(left_frame, text="", font=("Arial", 9), fg="gray")
@@ -343,9 +516,9 @@ class SymbolManagerDialog:
         
         tk.Button(
             bottom_frame,
-            text="🔍 全銘柄確認",
-            command=self.show_all_contracts_debug,
-            bg="#95a5a6",
+            text="📋 カテゴリ統計",
+            command=self.show_category_stats,
+            bg="#9b59b6",
             fg="white",
             font=("Arial", 11, "bold"),
             width=15
@@ -361,8 +534,13 @@ class SymbolManagerDialog:
             width=15
         ).pack(side=tk.RIGHT, padx=5)
     
+    def on_category_change(self, event=None):
+        """カテゴリ変更時の処理"""
+        self.current_category = self.category_var.get()
+        self.populate_available_contracts()
+    
     def populate_available_contracts(self):
-        """利用可能な契約をリストに表示"""
+        """利用可能な契約をリストに表示（カテゴリフィルタ対応）"""
         self.available_listbox.delete(0, tk.END)
         self.contract_map.clear()
         
@@ -370,41 +548,16 @@ class SymbolManagerDialog:
             self.available_count_label.config(text="銘柄データなし")
             return
         
-        # 主要な銘柄を優先表示(E-mini、金属、エネルギー、農産物、通貨など)
-        priority_prefixes = [
-            # 株価指数
-            'ES', 'NQ', 'YM', 'RTY',
-            # 貴金属
-            'GC', 'SI', 'HG', 'PL',
-            # エネルギー
-            'CL', 'NG', 'RB', 'HO',
-            # 農産物
-            'ZC', 'ZS', 'ZW', 'ZL', 'ZM',
-            # 通貨
-            '6E', '6J', '6B', '6C', '6A', '6S',
-            # 債券
-            'ZN', 'ZB', 'ZF', 'ZT',
-            # その他
-            'BTC', 'ETH', 'LE', 'HE', 'GF'
-        ]
+        # カテゴリフィルタを適用
+        if self.current_category == "全て":
+            filtered_contracts = self.all_contracts
+        else:
+            filtered_contracts = self.contracts_by_category.get(self.current_category, [])
         
         # 既に表示した銘柄を追跡
         displayed_names = set()
         
-        # 優先銘柄を先に表示
-        for prefix in priority_prefixes:
-            for contract in self.all_contracts:
-                name = contract.get('name', '')
-                # 監視中でない、かつまだ表示していない銘柄のみ
-                if name.startswith(prefix) and name not in self.watched_symbols and name not in displayed_names:
-                    description = contract.get('description', 'N/A')
-                    display_text = f"{name:10s} - {description}"
-                    self.available_listbox.insert(tk.END, display_text)
-                    self.contract_map[display_text] = contract
-                    displayed_names.add(name)
-        
-        # その他の銘柄を表示
-        for contract in self.all_contracts:
+        for contract in filtered_contracts:
             name = contract.get('name', '')
             # 監視中でない、かつまだ表示していない銘柄のみ
             if name not in self.watched_symbols and name not in displayed_names:
@@ -416,8 +569,9 @@ class SymbolManagerDialog:
         
         # 銘柄数を表示
         total_available = len(self.contract_map)
-        total_all = len(self.all_contracts)
-        self.available_count_label.config(text=f"利用可能: {total_available}銘柄 (全{total_all}銘柄中)")
+        total_all = len(filtered_contracts)
+        category_text = f"[{self.current_category}]" if self.current_category != "全て" else ""
+        self.available_count_label.config(text=f"利用可能: {total_available}銘柄 {category_text}")
     
     def filter_contracts(self, *args):
         """検索フィルタを適用"""
@@ -482,55 +636,46 @@ class SymbolManagerDialog:
             self.populate_available_contracts()
             self.populate_watched_symbols()
     
-    def show_all_contracts_debug(self):
-        """全銘柄をデバッグ用ウィンドウに表示"""
-        debug_window = tk.Toplevel(self.dialog)
-        debug_window.title("🔍 全銘柄一覧")
-        debug_window.geometry("800x600")
+    def show_category_stats(self):
+        """カテゴリ統計を表示"""
+        stats_window = tk.Toplevel(self.dialog)
+        stats_window.title("📊 カテゴリ統計")
+        stats_window.geometry("600x500")
         
         # テキストエリア
-        text_frame = tk.Frame(debug_window)
+        text_frame = tk.Frame(stats_window)
         text_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
         scrollbar = tk.Scrollbar(text_frame)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
-        text_widget = tk.Text(text_frame, yscrollcommand=scrollbar.set, font=("Courier", 10), wrap=tk.NONE)
+        text_widget = tk.Text(text_frame, yscrollcommand=scrollbar.set, font=("Courier", 10))
         text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.config(command=text_widget.yview)
         
-        # 横スクロールバー
-        h_scrollbar = tk.Scrollbar(debug_window, orient=tk.HORIZONTAL)
-        h_scrollbar.pack(fill=tk.X, padx=10)
-        text_widget.config(xscrollcommand=h_scrollbar.set)
-        h_scrollbar.config(command=text_widget.xview)
-        
-        # 全銘柄情報を表示
-        text_widget.insert(tk.END, f"=== 全銘柄一覧 ===\n")
+        # 統計情報を表示
+        text_widget.insert(tk.END, f"=== カテゴリ別統計 ===\n\n")
         text_widget.insert(tk.END, f"全契約数: {len(self.all_contracts)}\n")
-        text_widget.insert(tk.END, f"監視中: {len(self.watched_symbols)}銘柄\n")
-        text_widget.insert(tk.END, f"利用可能: {len(self.all_contracts) - len(self.watched_symbols)}銘柄\n\n")
+        text_widget.insert(tk.END, f"監視中: {len(self.watched_symbols)}銘柄\n\n")
         
-        text_widget.insert(tk.END, f"{'銘柄コード':<15} {'説明':<60} {'状態'}\n")
-        text_widget.insert(tk.END, "=" * 100 + "\n")
+        text_widget.insert(tk.END, f"{'カテゴリ':<20} {'銘柄数':>10} {'監視中':>10}\n")
+        text_widget.insert(tk.END, "=" * 50 + "\n")
         
-        # 銘柄をソートして表示
-        sorted_contracts = sorted(self.all_contracts, key=lambda x: x.get('name', ''))
-        
-        for contract in sorted_contracts:
-            name = contract.get('name', 'N/A')
-            description = contract.get('description', 'N/A')
-            status = "🟢 監視中" if name in self.watched_symbols else "⚪ 利用可能"
+        # カテゴリ別統計
+        for category in sorted(self.contracts_by_category.keys()):
+            contracts = self.contracts_by_category[category]
+            total = len(contracts)
+            watched = sum(1 for c in contracts if c.get('name') in self.watched_symbols)
             
-            text_widget.insert(tk.END, f"{name:<15} {description:<60} {status}\n")
+            text_widget.insert(tk.END, f"{category:<20} {total:>10} {watched:>10}\n")
         
         text_widget.config(state=tk.DISABLED)
         
         # 閉じるボタン
         tk.Button(
-            debug_window,
+            stats_window,
             text="閉じる",
-            command=debug_window.destroy,
+            command=stats_window.destroy,
             bg="#3498db",
             fg="white",
             font=("Arial", 11, "bold")
@@ -549,7 +694,7 @@ class SymbolManagerDialog:
 class CMEMonitorApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("CME先物監視アプリ v5.0 - 環境変数対応版")
+        self.root.title("CME先物監視アプリ v6.0 - 包括的銘柄取得対応")
         self.root.geometry("1100x750")
         
         # 設定管理
@@ -576,11 +721,12 @@ class CMEMonitorApp:
         self.api = None
         
         # 監視銘柄
-        self.watched_symbols = self.config.get('watched_symbols', ['ES', 'NQ', 'GC', 'CL'])
-        self.timeframe = self.config.get('timeframe', '1D')
+        self.watched_symbols = self.config.get('watched_symbols', ['ESZ5', 'NQZ5', 'GCZ5', 'CLZ5'])
+        self.timeframe = self.config.get('timeframe', '15m')
         self.debug_mode = self.config.get('debug_mode', False)
         self.contracts = {}
         self.all_contracts = []
+        self.contracts_by_category = {}
         
         # 自動更新スレッド
         self.auto_update_running = False
@@ -775,7 +921,13 @@ class CMEMonitorApp:
             messagebox.showwarning("警告", "先にAPIに接続してください")
             return
         
-        SymbolManagerDialog(self.root, self.all_contracts, self.watched_symbols, self.on_symbols_updated)
+        SymbolManagerDialog(
+            self.root, 
+            self.all_contracts, 
+            self.contracts_by_category,
+            self.watched_symbols, 
+            self.on_symbols_updated
+        )
     
     def on_symbols_updated(self, new_symbols):
         """銘柄が更新された時の処理"""
@@ -803,33 +955,50 @@ class CMEMonitorApp:
         self.log_text.see(tk.END)
     
     def connect(self):
-        """API接続"""
+        """API接続（包括的な銘柄取得）"""
         self.log("TopstepX APIに接続中...")
+        self.log("📊 Getcmesymbols.pyの手法で包括的に銘柄を取得します")
         self.status_label.config(text="🟡 接続中...")
         
         def connect_thread():
-            self.api = TopstepXAPI(self.username, self.api_key)
+            self.api = TopstepXAPI(self.username, self.api_key, debug=self.debug_mode)
             
             if self.api.authenticate():
                 self.log("✅ 認証成功")
                 self.status_label.config(text="🟢 接続済み")
                 
-                # 全契約情報を取得
-                self.all_contracts = self.api.search_contracts()
+                # 包括的な銘柄取得（Getcmesymbols.pyの手法）
+                self.all_contracts, self.contracts_by_category = self.api.get_all_contracts_comprehensive(
+                    log_callback=self.log
+                )
+                
                 if self.all_contracts:
-                    self.log(f"✅ {len(self.all_contracts)}件の契約情報を取得")
+                    self.log(f"🎉 合計 {len(self.all_contracts)}件の銘柄を取得しました")
+                    
+                    # カテゴリ統計を表示
+                    if self.contracts_by_category:
+                        self.log("\n📊 カテゴリ別統計:")
+                        for category in sorted(self.contracts_by_category.keys()):
+                            count = len(self.contracts_by_category[category])
+                            self.log(f"  • {category}: {count}件")
                     
                     # 監視銘柄の契約を取得
+                    self.log("\n🔍 監視銘柄の契約を取得中...")
                     for symbol_prefix in self.watched_symbols:
                         for contract in self.all_contracts:
                             if contract.get('name', '') == symbol_prefix:
                                 self.contracts[symbol_prefix] = contract
-                                self.log(f"✅ {symbol_prefix}: {contract.get('description')}")
+                                self.log(f"  ✅ {symbol_prefix}: {contract.get('description')}")
                                 break
                     
-                    self.log(f"監視銘柄数: {len(self.contracts)}")
+                    self.log(f"\n✅ 監視銘柄数: {len(self.contracts)}件")
+                    
+                    # 見つからなかった銘柄を報告
+                    not_found = [s for s in self.watched_symbols if s not in self.contracts]
+                    if not_found:
+                        self.log(f"⚠️ 以下の銘柄が見つかりませんでした: {', '.join(not_found)}")
                 else:
-                    self.log("❌ 契約情報の取得に失敗")
+                    self.log("❌ 銘柄情報の取得に失敗")
             else:
                 self.log("❌ 認証失敗")
                 self.status_label.config(text="🔴 接続失敗")
