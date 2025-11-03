@@ -2,16 +2,26 @@
   "watched_symbols": [
     "ESZ5",
     "NQZ5",
-    "GCZ5",
+    "YMZ5",
+    "RTYZ5",
+    "NKDZ5",
     "CLZ5",
+    "NGZ5",
+    "GCZ5",
+    "SIZ5",
     "6JZ5",
     "6EZ5"
   ],
   "auto_update_interval": 60,
+  "timeframe": "3m",
+  "debug_mode": false,
+  "_comment": "=== 5段階トレンド判定の閾値 ===",
   "squeeze_threshold": -10,
-  "trend_threshold": 10,
+  "range_threshold": 5,
+  "weak_trend_threshold": 15,
+  "strong_trend_threshold": 30,
   "roc_squeeze_threshold": 2,
-  "roc_trend_threshold": 3,
-  "timeframe": "15m",
-  "debug_mode": false
+  "roc_range_threshold": 3,
+  "roc_weak_trend_threshold": 6,
+  "roc_strong_trend_threshold": 10
 }
