@@ -1,4 +1,4 @@
-# cme_monitor_app_enhanced.py - Getcmesymbols.pyの銘柄取得方法を統合
+# cme_monitor_app_v7.py - 5段階トレンド判定対応版
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox
 import requests
@@ -48,10 +48,7 @@ class TopstepXAPI:
         return None
     
     def get_contracts_by_category(self, log_callback=None):
-        """
-        カテゴリ別に銘柄を取得（Getcmesymbols.pyから移植）
-        より多くの銘柄を取得するための包括的な方法
-        """
+        """カテゴリ別に銘柄を取得"""
         if not self.session_token:
             if log_callback:
                 log_callback("❌ 先に authenticate() を実行してください")
@@ -60,40 +57,14 @@ class TopstepXAPI:
         if log_callback:
             log_callback("📊 カテゴリ別検索で銘柄を取得中...")
         
-        # 主要なCME先物のプレフィックス（拡張版）
         categories = {
-            '株価指数': [
-                # Standard E-mini
-                'ES', 'NQ', 'YM', 'RTY', 
-                # International
-                'NKD', 'NIY',  # Nikkei 225
-                # Micro E-mini
-                'MES', 'MNQ', 'M2K', 'MYM',
-                # その他
-                'EMD', 'SSG'
-            ],
-            '通貨': [
-                'EC', '6E', '6J', '6B', '6C', '6A', '6S', '6N', '6M',
-                'DX', 'E7', 'J7', 'AUD', 'CAD', 'CHF', 'EUR', 'GBP', 'JPY', 'NZD'
-            ],
-            'エネルギー': [
-                'CL', 'NG', 'RB', 'HO', 'BZ', 'QG', 'QM',
-                'MCL', 'MGC'  # Micro contracts
-            ],
-            '貴金属': [
-                'GC', 'SI', 'HG', 'PL', 'PA',
-                'QO', 'QI', 'MGC', 'SIL'  # Micro & E-micro
-            ],
-            '農産物': [
-                'ZC', 'ZS', 'ZW', 'ZL', 'ZM', 'ZO', 'ZR',
-                'CT', 'KC', 'SB', 'CC', 'OJ',
-                'DC', 'DY'  # Dairy
-            ],
+            '株価指数': ['ES', 'NQ', 'YM', 'RTY', 'NKD', 'NIY', 'MES', 'MNQ', 'M2K', 'MYM', 'EMD', 'SSG'],
+            '通貨': ['EC', '6E', '6J', '6B', '6C', '6A', '6S', '6N', '6M', 'DX', 'E7', 'J7', 'AUD', 'CAD', 'CHF', 'EUR', 'GBP', 'JPY', 'NZD'],
+            'エネルギー': ['CL', 'NG', 'RB', 'HO', 'BZ', 'QG', 'QM', 'MCL', 'MGC'],
+            '貴金属': ['GC', 'SI', 'HG', 'PL', 'PA', 'QO', 'QI', 'MGC', 'SIL'],
+            '農産物': ['ZC', 'ZS', 'ZW', 'ZL', 'ZM', 'ZO', 'ZR', 'CT', 'KC', 'SB', 'CC', 'OJ', 'DC', 'DY'],
             '畜産': ['LE', 'HE', 'GF', 'DC'],
-            '債券': [
-                'ZB', 'ZN', 'ZF', 'ZT', 'UB',
-                'TWE', 'FV'  # Ultra T-Bond, Five Year
-            ],
+            '債券': ['ZB', 'ZN', 'ZF', 'ZT', 'UB', 'TWE', 'FV'],
             '仮想通貨': ['BTC', 'ETH', 'MBT', 'MET'],
             'ボラティリティ': ['VX', 'VXM'],
             'その他': ['BRN', 'LBS']
@@ -111,11 +82,9 @@ class TopstepXAPI:
             for prefix in prefixes:
                 contracts = self.search_contracts(search_text=prefix, live=False, silent=True)
                 if contracts:
-                    # 重複を避けるため、本当にそのプレフィックスで始まるものだけを追加
                     filtered = [c for c in contracts if c.get('name', '').startswith(prefix)]
                     category_contracts.extend(filtered)
             
-            # 重複を除去（idで判定）
             unique_contracts = []
             seen_ids = set()
             for contract in category_contracts:
@@ -136,14 +105,10 @@ class TopstepXAPI:
         return all_contracts
     
     def get_all_contracts_comprehensive(self, log_callback=None):
-        """
-        包括的な銘柄取得（2つの方法を組み合わせ）
-        Getcmesymbols.pyの手法を移植
-        """
+        """包括的な銘柄取得"""
         if log_callback:
             log_callback("🔍 包括的な銘柄取得を開始...")
         
-        # 方法1: 標準的な全件取得
         if log_callback:
             log_callback("  方法1: 空検索で全銘柄取得...")
         contracts_method1 = self.search_contracts(search_text="", live=False)
@@ -156,18 +121,15 @@ class TopstepXAPI:
             if log_callback:
                 log_callback("    ⚠️ 空検索では銘柄が取得できませんでした")
         
-        # 方法2: カテゴリ別検索
         if log_callback:
             log_callback("  方法2: カテゴリ別検索...")
         contracts_by_category = self.get_contracts_by_category(log_callback)
         
-        # カテゴリ別の契約を1つのリストにまとめる
         contracts_method2 = []
         if contracts_by_category:
             for category, contracts in contracts_by_category.items():
                 contracts_method2.extend(contracts)
         
-        # 両方の結果をマージ
         if log_callback:
             log_callback(f"  📊 マージ中...")
             log_callback(f"    方法1: {len(contracts_method1)}件")
@@ -181,7 +143,7 @@ class TopstepXAPI:
         return all_contracts, contracts_by_category
     
     def _merge_contract_lists(self, list1, list2):
-        """2つの契約リストをマージ（重複除去）"""
+        """2つの契約リストをマージ"""
         if not list1:
             return list2 or []
         if not list2:
@@ -206,7 +168,6 @@ class TopstepXAPI:
         url = f"{self.base_url}/History/retrieveBars"
         headers = {"Authorization": f"Bearer {self.session_token}", "Content-Type": "application/json"}
         
-        # 時間足に応じたunitとunitNumberの設定
         timeframe_map = {
             "3m": {"unit": 2, "unitNumber": 3, "days": 7},
             "15m": {"unit": 2, "unitNumber": 15, "days": 14},
@@ -238,14 +199,13 @@ class TopstepXAPI:
 
 
 class MarketAnalyzer:
-    """市場分析クラス"""
+    """市場分析クラス（5段階トレンド判定対応）"""
     
     @staticmethod
     def calculate_indicators(df, debug=False):
         """指標を計算"""
         df = df.copy()
         
-        # カラム名の標準化
         rename_map = {
             't': 'time', 'timestamp': 'time', 'datetime': 'time', 'date': 'time',
             'o': 'open', 'h': 'high', 'l': 'low', 'c': 'close', 'v': 'volume'
@@ -254,7 +214,6 @@ class MarketAnalyzer:
         actual_rename = {k: v for k, v in rename_map.items() if k in df.columns}
         df = df.rename(columns=actual_rename)
         
-        # 時刻カラムを探す
         time_col = None
         for col in ['time', 't', 'timestamp', 'datetime', 'date']:
             if col in df.columns:
@@ -267,41 +226,80 @@ class MarketAnalyzer:
         if time_col != 'time':
             df = df.rename(columns={time_col: 'time'})
         
-        # 並べ替え
         df = df.sort_values('time').reset_index(drop=True)
         
-        # 必須カラムの存在確認
         required_cols = ['high', 'low', 'close']
         missing_cols = [col for col in required_cols if col not in df.columns]
         if missing_cols:
             raise ValueError(f"必須カラムが不足: {missing_cols}")
         
-        # チャイキンボラティリティ(Length=10, ROCLength=12)
+        # チャイキンボラティリティ
         df['hl_range'] = df['high'] - df['low']
         ema_hl = df['hl_range'].ewm(span=10, adjust=False, min_periods=10).mean()
         df['chaikin_vol'] = ((ema_hl - ema_hl.shift(12)) / ema_hl.shift(12)) * 100
         
-        # ROC (Rate of Change)
+        # ROC
         df['roc'] = ((df['close'] - df['close'].shift(10)) / df['close'].shift(10)) * 100
         
         return df
     
     @staticmethod
-    def determine_market_state(chaikin_vol, roc):
-        """市場状態を判定"""
+    def determine_market_state(chaikin_vol, roc, config=None):
+        """
+        市場状態を判定（5段階分類）
+        
+        🟡 スクイーズ      : ChaikinVol < -10 かつ |ROC| < 2
+        🟢 レンジ          : ChaikinVol -10〜5 かつ |ROC| < 3
+        🟠 弱いトレンド(↑/↓): ChaikinVol 5〜15 かつ |ROC| 3〜6
+        🔴 強いトレンド(↑/↓): ChaikinVol 15〜30 かつ |ROC| 6〜10
+        🔥 超強トレンド(↑/↓): ChaikinVol > 30 かつ |ROC| > 10
+        
+        Args:
+            chaikin_vol: チャイキンボラティリティ
+            roc: Rate of Change
+            config: 設定辞書（閾値）
+        
+        Returns:
+            tuple: (状態説明, 絵文字)
+        """
         if pd.isna(chaikin_vol) or pd.isna(roc):
             return "データ不足", "⚪"
         
-        # スクイーズ
-        if chaikin_vol < -10 and abs(roc) < 2:
+        # デフォルト閾値
+        if config is None:
+            config = {}
+        
+        squeeze_threshold = config.get('squeeze_threshold', -10)
+        range_threshold = config.get('range_threshold', 5)
+        weak_trend_threshold = config.get('weak_trend_threshold', 15)
+        strong_trend_threshold = config.get('strong_trend_threshold', 30)
+        
+        roc_squeeze_threshold = config.get('roc_squeeze_threshold', 2)
+        roc_range_threshold = config.get('roc_range_threshold', 3)
+        roc_weak_trend_threshold = config.get('roc_weak_trend_threshold', 6)
+        roc_strong_trend_threshold = config.get('roc_strong_trend_threshold', 10)
+        
+        # 方向性の判定
+        direction = "↑" if roc > 0 else "↓"
+        abs_roc = abs(roc)
+        
+        # 🟡 スクイーズ（エネルギー蓄積）
+        if chaikin_vol < squeeze_threshold and abs_roc < roc_squeeze_threshold:
             return "スクイーズ(エネルギー蓄積)", "🟡"
         
-        # トレンド開始
-        elif chaikin_vol > 10 and abs(roc) > 3:
-            direction = "上昇" if roc > 0 else "下降"
-            return f"トレンド開始({direction})", "🔴"
+        # 🔥 超強トレンド
+        elif chaikin_vol > strong_trend_threshold and abs_roc > roc_strong_trend_threshold:
+            return f"超強トレンド{direction}", "🔥"
         
-        # レンジ
+        # 🔴 強いトレンド
+        elif chaikin_vol > weak_trend_threshold and abs_roc > roc_weak_trend_threshold:
+            return f"強いトレンド{direction}", "🔴"
+        
+        # 🟠 弱いトレンド
+        elif chaikin_vol > range_threshold and abs_roc > roc_range_threshold:
+            return f"弱いトレンド{direction}", "🟠"
+        
+        # 🟢 レンジ
         else:
             return "レンジ", "🟢"
 
@@ -317,9 +315,13 @@ class ConfigManager:
             "auto_update_interval": 60,
             "debug_mode": False,
             "squeeze_threshold": -10,
-            "trend_threshold": 10,
+            "range_threshold": 5,
+            "weak_trend_threshold": 15,
+            "strong_trend_threshold": 30,
             "roc_squeeze_threshold": 2,
-            "roc_trend_threshold": 3
+            "roc_range_threshold": 3,
+            "roc_weak_trend_threshold": 6,
+            "roc_strong_trend_threshold": 10
         }
     
     def load_config(self):
@@ -349,7 +351,7 @@ class ConfigManager:
 
 
 class SymbolManagerDialog:
-    """銘柄管理ダイアログ（カテゴリ別表示対応）"""
+    """銘柄管理ダイアログ"""
     
     def __init__(self, parent, all_contracts, contracts_by_category, watched_symbols, callback):
         self.parent = parent
@@ -359,7 +361,6 @@ class SymbolManagerDialog:
         self.callback = callback
         self.current_category = "全て"
         
-        # ダイアログウィンドウを作成
         self.dialog = tk.Toplevel(parent)
         self.dialog.title("📊 銘柄管理（カテゴリ別表示）")
         self.dialog.geometry("900x600")
@@ -370,7 +371,6 @@ class SymbolManagerDialog:
     
     def setup_ui(self):
         """UIセットアップ"""
-        # タイトルフレーム
         title_frame = tk.Frame(self.dialog, bg="#2c3e50")
         title_frame.pack(fill=tk.X, padx=10, pady=10)
         
@@ -382,21 +382,17 @@ class SymbolManagerDialog:
             fg="white"
         ).pack(pady=10)
         
-        # メインフレーム(2カラム)
         main_frame = tk.Frame(self.dialog)
         main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
         
-        # 左側:利用可能な銘柄
         left_frame = tk.LabelFrame(main_frame, text="利用可能な銘柄", font=("Arial", 10, "bold"))
         left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
         
-        # カテゴリ選択フレーム
         category_frame = tk.Frame(left_frame)
         category_frame.pack(fill=tk.X, padx=5, pady=5)
         
         tk.Label(category_frame, text="📂 カテゴリ:").pack(side=tk.LEFT, padx=5)
         
-        # カテゴリリスト
         categories = ["全て"] + sorted(self.contracts_by_category.keys())
         self.category_var = tk.StringVar(value="全て")
         category_combo = ttk.Combobox(
@@ -409,11 +405,9 @@ class SymbolManagerDialog:
         category_combo.pack(side=tk.LEFT, padx=5)
         category_combo.bind('<<ComboboxSelected>>', self.on_category_change)
         
-        # 銘柄数表示
         self.available_count_label = tk.Label(left_frame, text="", font=("Arial", 9), fg="gray")
         self.available_count_label.pack(anchor=tk.W, padx=10, pady=2)
         
-        # 検索フィールド
         search_frame = tk.Frame(left_frame)
         search_frame.pack(fill=tk.X, padx=5, pady=5)
         
@@ -422,7 +416,6 @@ class SymbolManagerDialog:
         self.search_var.trace('w', self.filter_contracts)
         tk.Entry(search_frame, textvariable=self.search_var, width=20).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
         
-        # クリアボタン
         tk.Button(
             search_frame,
             text="✕",
@@ -433,7 +426,6 @@ class SymbolManagerDialog:
             width=3
         ).pack(side=tk.LEFT, padx=2)
         
-        # 利用可能な銘柄リスト
         list_frame = tk.Frame(left_frame)
         list_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
@@ -444,14 +436,11 @@ class SymbolManagerDialog:
         self.available_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.config(command=self.available_listbox.yview)
         
-        # リストボックスをダブルクリックで追加
         self.available_listbox.bind('<Double-Button-1>', lambda e: self.add_symbol())
         
-        # 契約情報を格納
         self.contract_map = {}
         self.populate_available_contracts()
         
-        # 中央:ボタン
         button_frame = tk.Frame(main_frame, width=80)
         button_frame.pack(side=tk.LEFT, fill=tk.Y, padx=10, pady=50)
         
@@ -477,11 +466,9 @@ class SymbolManagerDialog:
             height=3
         ).pack(pady=10)
         
-        # 右側:監視中の銘柄
         right_frame = tk.LabelFrame(main_frame, text="監視中の銘柄", font=("Arial", 10, "bold"))
         right_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
         
-        # 銘柄数表示
         self.watched_count_label = tk.Label(right_frame, text="", font=("Arial", 9), fg="gray")
         self.watched_count_label.pack(anchor=tk.W, padx=10, pady=2)
         
@@ -495,12 +482,10 @@ class SymbolManagerDialog:
         self.watched_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar2.config(command=self.watched_listbox.yview)
         
-        # リストボックスをダブルクリックで削除
         self.watched_listbox.bind('<Double-Button-1>', lambda e: self.remove_symbol())
         
         self.populate_watched_symbols()
         
-        # 下部:ボタン
         bottom_frame = tk.Frame(self.dialog)
         bottom_frame.pack(fill=tk.X, padx=10, pady=10)
         
@@ -540,7 +525,7 @@ class SymbolManagerDialog:
         self.populate_available_contracts()
     
     def populate_available_contracts(self):
-        """利用可能な契約をリストに表示（カテゴリフィルタ対応）"""
+        """利用可能な契約をリストに表示"""
         self.available_listbox.delete(0, tk.END)
         self.contract_map.clear()
         
@@ -548,18 +533,15 @@ class SymbolManagerDialog:
             self.available_count_label.config(text="銘柄データなし")
             return
         
-        # カテゴリフィルタを適用
         if self.current_category == "全て":
             filtered_contracts = self.all_contracts
         else:
             filtered_contracts = self.contracts_by_category.get(self.current_category, [])
         
-        # 既に表示した銘柄を追跡
         displayed_names = set()
         
         for contract in filtered_contracts:
             name = contract.get('name', '')
-            # 監視中でない、かつまだ表示していない銘柄のみ
             if name not in self.watched_symbols and name not in displayed_names:
                 description = contract.get('description', 'N/A')
                 display_text = f"{name:10s} - {description}"
@@ -567,9 +549,7 @@ class SymbolManagerDialog:
                 self.contract_map[display_text] = contract
                 displayed_names.add(name)
         
-        # 銘柄数を表示
         total_available = len(self.contract_map)
-        total_all = len(filtered_contracts)
         category_text = f"[{self.current_category}]" if self.current_category != "全て" else ""
         self.available_count_label.config(text=f"利用可能: {total_available}銘柄 {category_text}")
     
@@ -587,7 +567,6 @@ class SymbolManagerDialog:
         self.watched_listbox.delete(0, tk.END)
         
         for symbol in self.watched_symbols:
-            # 説明を追加
             description = "N/A"
             for contract in self.all_contracts:
                 if contract.get('name', '') == symbol:
@@ -597,7 +576,6 @@ class SymbolManagerDialog:
             display_text = f"{symbol:10s} - {description}"
             self.watched_listbox.insert(tk.END, display_text)
         
-        # 銘柄数を表示
         self.watched_count_label.config(text=f"監視中: {len(self.watched_symbols)}銘柄")
     
     def add_symbol(self):
@@ -625,7 +603,7 @@ class SymbolManagerDialog:
             return
         
         selected_text = self.watched_listbox.get(selection[0])
-        symbol = selected_text.split()[0]  # 最初のワード(銘柄コード)を取得
+        symbol = selected_text.split()[0]
         
         if symbol in self.watched_symbols:
             if len(self.watched_symbols) <= 1:
@@ -642,7 +620,6 @@ class SymbolManagerDialog:
         stats_window.title("📊 カテゴリ統計")
         stats_window.geometry("600x500")
         
-        # テキストエリア
         text_frame = tk.Frame(stats_window)
         text_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
@@ -653,7 +630,6 @@ class SymbolManagerDialog:
         text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.config(command=text_widget.yview)
         
-        # 統計情報を表示
         text_widget.insert(tk.END, f"=== カテゴリ別統計 ===\n\n")
         text_widget.insert(tk.END, f"全契約数: {len(self.all_contracts)}\n")
         text_widget.insert(tk.END, f"監視中: {len(self.watched_symbols)}銘柄\n\n")
@@ -661,7 +637,6 @@ class SymbolManagerDialog:
         text_widget.insert(tk.END, f"{'カテゴリ':<20} {'銘柄数':>10} {'監視中':>10}\n")
         text_widget.insert(tk.END, "=" * 50 + "\n")
         
-        # カテゴリ別統計
         for category in sorted(self.contracts_by_category.keys()):
             contracts = self.contracts_by_category[category]
             total = len(contracts)
@@ -671,7 +646,6 @@ class SymbolManagerDialog:
         
         text_widget.config(state=tk.DISABLED)
         
-        # 閉じるボタン
         tk.Button(
             stats_window,
             text="閉じる",
@@ -694,33 +668,28 @@ class SymbolManagerDialog:
 class CMEMonitorApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("CME先物監視アプリ v6.0 - 包括的銘柄取得対応")
-        self.root.geometry("1100x750")
+        self.root.title("CME先物監視アプリ v7.0 - 5段階トレンド判定対応")
+        self.root.geometry("1200x750")
         
-        # 設定管理
         self.config_manager = ConfigManager()
         self.config = self.config_manager.load_config()
         
-        # 環境変数からAPI認証情報を取得
         self.username = os.getenv('TOPSTEPX_USERNAME')
         self.api_key = os.getenv('TOPSTEPX_API_KEY')
         
-        # 認証情報の確認
         if not self.username or not self.api_key:
             messagebox.showerror(
                 "環境変数エラー",
                 "TopstepX APIの認証情報が設定されていません。\n\n"
                 ".envファイルに以下を設定してください:\n"
                 "TOPSTEPX_USERNAME=your_username\n"
-                "TOPSTEPX_API_KEY=your_api_key\n\n"
-                "詳細はREADME.mdを参照してください。"
+                "TOPSTEPX_API_KEY=your_api_key"
             )
             self.root.quit()
             return
         
         self.api = None
         
-        # 監視銘柄
         self.watched_symbols = self.config.get('watched_symbols', ['ESZ5', 'NQZ5', 'GCZ5', 'CLZ5'])
         self.timeframe = self.config.get('timeframe', '15m')
         self.debug_mode = self.config.get('debug_mode', False)
@@ -728,14 +697,12 @@ class CMEMonitorApp:
         self.all_contracts = []
         self.contracts_by_category = {}
         
-        # 自動更新スレッド
         self.auto_update_running = False
         
         self.setup_ui()
         
     def setup_ui(self):
         """UI構築"""
-        # トップフレーム:ステータス
         top_frame = tk.Frame(self.root, bg="#2c3e50", height=60)
         top_frame.pack(fill=tk.X, padx=10, pady=5)
         
@@ -748,7 +715,18 @@ class CMEMonitorApp:
         )
         self.status_label.pack(pady=15)
         
-        # 時間足選択フレーム
+        # 5段階トレンド判定の凡例を追加
+        legend_frame = tk.Frame(self.root, bg="#34495e")
+        legend_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        tk.Label(
+            legend_frame,
+            text="【5段階トレンド判定】 🟡スクイーズ | 🟢レンジ | 🟠弱トレンド | 🔴強トレンド | 🔥超強トレンド",
+            font=("Arial", 10, "bold"),
+            bg="#34495e",
+            fg="white"
+        ).pack(pady=5)
+        
         timeframe_frame = tk.Frame(self.root, bg="#34495e")
         timeframe_frame.pack(fill=tk.X, padx=10, pady=5)
         
@@ -760,7 +738,6 @@ class CMEMonitorApp:
             fg="white"
         ).pack(side=tk.LEFT, padx=10)
         
-        # 時間足選択ラジオボタン
         self.timeframe_var = tk.StringVar(value=self.timeframe)
         timeframe_options = [
             ("3分足", "3m"),
@@ -783,7 +760,6 @@ class CMEMonitorApp:
                 command=self.on_timeframe_change
             ).pack(side=tk.LEFT, padx=5)
         
-        # デバッグモード切り替え
         self.debug_var = tk.BooleanVar(value=self.debug_mode)
         tk.Checkbutton(
             timeframe_frame,
@@ -796,7 +772,6 @@ class CMEMonitorApp:
             command=self.toggle_debug_mode
         ).pack(side=tk.RIGHT, padx=10)
         
-        # ボタンフレーム
         button_frame = tk.Frame(self.root)
         button_frame.pack(fill=tk.X, padx=10, pady=5)
         
@@ -850,35 +825,34 @@ class CMEMonitorApp:
             width=13
         ).pack(side=tk.LEFT, padx=3)
         
-        # 結果表示用テーブル
         table_frame = tk.Frame(self.root)
         table_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
         
-        # Treeview(テーブル)
         columns = ("銘柄", "時間足", "状態", "終値", "チャイキンVol", "ROC", "データ時刻", "更新時刻")
         self.tree = ttk.Treeview(table_frame, columns=columns, show="headings", height=12)
         
         for col in columns:
             self.tree.heading(col, text=col)
             if col == "銘柄":
-                self.tree.column(col, width=100, anchor=tk.CENTER)
+                self.tree.column(col, width=120, anchor=tk.CENTER)
             elif col == "時間足":
                 self.tree.column(col, width=80, anchor=tk.CENTER)
+            elif col == "状態":
+                self.tree.column(col, width=150, anchor=tk.CENTER)
             elif col in ["データ時刻", "更新時刻"]:
                 self.tree.column(col, width=140, anchor=tk.CENTER)
             else:
-                self.tree.column(col, width=130, anchor=tk.CENTER)
+                self.tree.column(col, width=120, anchor=tk.CENTER)
         
         self.tree.pack(fill=tk.BOTH, expand=True)
         
-        # ログ表示
         log_frame = tk.LabelFrame(self.root, text="📋 ログ", font=("Arial", 10, "bold"))
         log_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
         
         self.log_text = scrolledtext.ScrolledText(log_frame, height=10, font=("Courier", 9))
         self.log_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
-        # 初期ログ
+        self.log(f"🎯 5段階トレンド判定モード")
         self.log(f"監視銘柄: {', '.join(self.watched_symbols)}")
         self.log(f"時間足: {self.get_timeframe_label(self.timeframe)}")
         self.log(f"デバッグモード: {'ON' if self.debug_mode else 'OFF'}")
@@ -907,11 +881,9 @@ class CMEMonitorApp:
         self.timeframe = self.timeframe_var.get()
         self.log(f"⏱️ 時間足を変更: {self.get_timeframe_label(self.timeframe)}")
         
-        # 設定を保存
         self.config['timeframe'] = self.timeframe
         self.config_manager.save_config(self.config)
         
-        # データを更新
         if self.api and self.contracts:
             self.update_data()
     
@@ -937,7 +909,6 @@ class CMEMonitorApp:
         
         self.log(f"✅ 監視銘柄を更新: {', '.join(self.watched_symbols)}")
         
-        # 契約情報を更新
         self.contracts.clear()
         for symbol_prefix in self.watched_symbols:
             for contract in self.all_contracts:
@@ -945,7 +916,6 @@ class CMEMonitorApp:
                     self.contracts[symbol_prefix] = contract
                     break
         
-        # データを更新
         self.update_data()
     
     def log(self, message):
@@ -955,9 +925,9 @@ class CMEMonitorApp:
         self.log_text.see(tk.END)
     
     def connect(self):
-        """API接続（包括的な銘柄取得）"""
+        """API接続"""
         self.log("TopstepX APIに接続中...")
-        self.log("📊 Getcmesymbols.pyの手法で包括的に銘柄を取得します")
+        self.log("📊 包括的な銘柄取得を開始")
         self.status_label.config(text="🟡 接続中...")
         
         def connect_thread():
@@ -967,7 +937,6 @@ class CMEMonitorApp:
                 self.log("✅ 認証成功")
                 self.status_label.config(text="🟢 接続済み")
                 
-                # 包括的な銘柄取得（Getcmesymbols.pyの手法）
                 self.all_contracts, self.contracts_by_category = self.api.get_all_contracts_comprehensive(
                     log_callback=self.log
                 )
@@ -975,14 +944,12 @@ class CMEMonitorApp:
                 if self.all_contracts:
                     self.log(f"🎉 合計 {len(self.all_contracts)}件の銘柄を取得しました")
                     
-                    # カテゴリ統計を表示
                     if self.contracts_by_category:
                         self.log("\n📊 カテゴリ別統計:")
                         for category in sorted(self.contracts_by_category.keys()):
                             count = len(self.contracts_by_category[category])
                             self.log(f"  • {category}: {count}件")
                     
-                    # 監視銘柄の契約を取得
                     self.log("\n🔍 監視銘柄の契約を取得中...")
                     for symbol_prefix in self.watched_symbols:
                         for contract in self.all_contracts:
@@ -993,7 +960,6 @@ class CMEMonitorApp:
                     
                     self.log(f"\n✅ 監視銘柄数: {len(self.contracts)}件")
                     
-                    # 見つからなかった銘柄を報告
                     not_found = [s for s in self.watched_symbols if s not in self.contracts]
                     if not_found:
                         self.log(f"⚠️ 以下の銘柄が見つかりませんでした: {', '.join(not_found)}")
@@ -1006,7 +972,7 @@ class CMEMonitorApp:
         threading.Thread(target=connect_thread, daemon=True).start()
     
     def update_data(self):
-        """データ更新"""
+        """データ更新（5段階トレンド判定対応）"""
         if not self.api or not self.contracts:
             self.log("⚠️ 先に接続してください")
             return
@@ -1014,7 +980,6 @@ class CMEMonitorApp:
         self.log(f"データ更新中... ({self.get_timeframe_label(self.timeframe)})")
         
         def update_thread():
-            # テーブルをクリア
             for item in self.tree.get_children():
                 self.tree.delete(item)
             
@@ -1024,35 +989,30 @@ class CMEMonitorApp:
                 
                 self.log(f"📊 {name} のデータ取得中... ({self.get_timeframe_label(self.timeframe)})")
                 
-                # データ取得(選択された時間足)
                 bars = self.api.get_historical_data(contract_id, timeframe=self.timeframe, limit=500)
                 
                 if not bars or len(bars) == 0:
                     self.log(f"❌ {name}: データ取得失敗")
                     continue
                 
-                # DataFrameに変換
                 df = pd.DataFrame(bars)
                 df = MarketAnalyzer.calculate_indicators(df, debug=self.debug_mode)
                 
-                # 最新データ
                 latest = df.iloc[-1]
                 chaikin_vol = latest.get('chaikin_vol', 0)
                 roc = latest.get('roc', 0)
                 close = latest.get('close', 0)
                 data_time = latest.get('time', 'N/A')
                 
-                # 市場状態判定
-                state, emoji = MarketAnalyzer.determine_market_state(chaikin_vol, roc)
+                # 5段階トレンド判定（configを渡す）
+                state, emoji = MarketAnalyzer.determine_market_state(chaikin_vol, roc, self.config)
                 
-                # データ時刻をフォーマット
                 try:
                     from datetime import datetime as dt
                     data_time_str = dt.fromisoformat(data_time.replace('Z', '+00:00')).strftime("%m/%d %H:%M")
                 except:
                     data_time_str = str(data_time)[:16] if len(str(data_time)) > 16 else str(data_time)
                 
-                # テーブルに追加
                 self.tree.insert("", tk.END, values=(
                     f"{emoji} {name}",
                     self.get_timeframe_label(self.timeframe),
@@ -1064,7 +1024,7 @@ class CMEMonitorApp:
                     datetime.now().strftime("%H:%M:%S")
                 ))
                 
-                self.log(f"✅ {name}: {state} (CV: {chaikin_vol:.2f}%)")
+                self.log(f"✅ {name}: {state} (CV: {chaikin_vol:.2f}%, ROC: {roc:.2f}%)")
             
             self.log("🎉 更新完了")
         
