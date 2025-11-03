@@ -1,0 +1,4 @@
+﻿id,name,description,tickSize,tickValue,activeContract,symbolId
+CON.F.US.M6A.Z25,M6AZ5,E-Micro AUD/USD: December 2025,0.0001,1.0,True,F.US.M6A
+CON.F.US.M6B.Z25,M6BZ5,E-Micro GBP/USD: December 2025,0.0001,0.625,True,F.US.M6B
+CON.F.US.M6E.Z25,M6EZ5,E-Micro EUR/USD: December 2025,0.0001,1.25,True,F.US.M6E

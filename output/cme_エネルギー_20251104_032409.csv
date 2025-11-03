@@ -1,0 +1,8 @@
+﻿id,name,description,tickSize,tickValue,activeContract,symbolId
+CON.F.US.CLE.Z25,CLZ5,Crude Light (Globex): December 2025,0.01,10.0,True,F.US.CLE
+CON.F.US.HOE.Z25,HOZ5,NY Harbor ULSD: December 2025,0.0001,4.2,True,F.US.HOE
+CON.F.US.NGE.Z25,NGZ5,Natural Gas (Globex): December 2025,0.001,10.0,True,F.US.NGE
+CON.F.US.RBE.Z25,RBZ5,RBOB Gasoline (Globex): December 2025,0.0001,4.2,True,F.US.RBE
+CON.F.US.NQG.X25,QGX5,E-Mini Natural Gas: November 2025,0.005,12.5,True,F.US.NQG
+CON.F.US.NQM.Z25,QMZ5,E-Mini Crude Oil: December 2025,0.025,12.5,True,F.US.NQM
+CON.F.US.MCLE.Z25,MCLZ5,Micro WTI Crude Oil: December 2025,0.01,1.0,True,F.US.MCLE

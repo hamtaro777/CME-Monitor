@@ -1,0 +1,17 @@
+{
+  "watched_symbols": [
+    "ESZ5",
+    "NQZ5",
+    "GCZ5",
+    "CLZ5",
+    "6JZ5",
+    "6EZ5"
+  ],
+  "auto_update_interval": 60,
+  "squeeze_threshold": -10,
+  "trend_threshold": 10,
+  "roc_squeeze_threshold": 2,
+  "roc_trend_threshold": 3,
+  "timeframe": "15m",
+  "debug_mode": false
+}

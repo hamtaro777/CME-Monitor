@@ -1,0 +1,3 @@
+﻿id,name,description,tickSize,tickValue,activeContract,symbolId
+CON.F.US.GLE.Z25,LEZ5,Live Cattle (Globex): December 2025,0.025,10,True,F.US.GLE
+CON.F.US.HE.Z25,HEZ5,Lean Hogs (Globex): December 2025,0.025,10,True,F.US.HE

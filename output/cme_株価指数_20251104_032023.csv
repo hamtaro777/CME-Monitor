@@ -1,0 +1,5 @@
+﻿id,name,description,tickSize,tickValue,activeContract,symbolId
+CON.F.US.ENQ.Z25,NQZ5,E-mini NASDAQ-100: December 2025,0.25,5.0,True,F.US.ENQ
+CON.F.US.EP.Z25,ESZ5,E-Mini S&P 500: December 2025,0.25,12.5,True,F.US.EP
+CON.F.US.YM.Z25,YMZ5,E-mini Dow ($5): December 2025,1.0,5.0,True,F.US.YM
+CON.F.US.RTY.Z25,RTYZ5,E-mini Russell 2000: December 2025,0.1,5.0,True,F.US.RTY

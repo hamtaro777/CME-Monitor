@@ -1,0 +1,7 @@
+﻿id,name,description,tickSize,tickValue,activeContract,symbolId
+CON.F.US.EEU.Z25,E7Z5,E-mini Euro FX: December 2025,0.0001,6.25,True,F.US.EEU
+CON.F.US.GMET.X25,METX5,Micro Ether: November 2025,0.5,0.05,True,F.US.GMET
+CON.F.US.M2K.Z25,M2KZ5,Micro E-mini Russell 2000: December 2025,0.1,0.5,True,F.US.M2K
+CON.F.US.M6A.Z25,M6AZ5,E-Micro AUD/USD: December 2025,0.0001,1.0,True,F.US.M6A
+CON.F.US.M6B.Z25,M6BZ5,E-Micro GBP/USD: December 2025,0.0001,0.625,True,F.US.M6B
+CON.F.US.M6E.Z25,M6EZ5,E-Micro EUR/USD: December 2025,0.0001,1.25,True,F.US.M6E

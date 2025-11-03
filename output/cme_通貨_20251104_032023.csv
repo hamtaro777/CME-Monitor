@@ -1,0 +1,6 @@
+﻿id,name,description,tickSize,tickValue,activeContract,symbolId
+CON.F.US.BP6.Z25,6BZ5,British Pound (Globex): December 2025,0.0001,6.25,True,F.US.BP6
+CON.F.US.CA6.Z25,6CZ5,Canadian Dollar (Globex): December 2025,5e-05,5.0,True,F.US.CA6
+CON.F.US.DA6.Z25,6AZ5,Australian Dollar (Globex): December 2025,5e-05,5.0,True,F.US.DA6
+CON.F.US.EU6.Z25,6EZ5,Euro FX (Globex): December 2025,5e-05,6.25,True,F.US.EU6
+CON.F.US.JY6.Z25,6JZ5,Japanese Yen (Globex): December 2025,5e-07,6.25,True,F.US.JY6
