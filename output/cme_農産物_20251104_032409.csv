@@ -1,6 +1,0 @@
-﻿id,name,description,tickSize,tickValue,activeContract,symbolId
-CON.F.US.ZCE.Z25,ZCZ5,Corn (Globex): December 2025,0.25,12.5,True,F.US.ZCE
-CON.F.US.ZSE.F26,ZSF6,Soybeans (Globex): January 2026,0.25,12.5,True,F.US.ZSE
-CON.F.US.ZWA.Z25,ZWZ5,Wheat (Globex): December 2025,0.25,12.5,True,F.US.ZWA
-CON.F.US.ZLE.Z25,ZLZ5,Soybean Oil (Globex): December 2025,0.01,6.0,True,F.US.ZLE
-CON.F.US.ZME.Z25,ZMZ5,Soybean Meal (Globex): December 2025,0.1,10.0,True,F.US.ZME

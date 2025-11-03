@@ -1,6 +1,0 @@
-﻿id,name,description,tickSize,tickValue,activeContract,symbolId
-CON.F.US.CPE.Z25,HGZ5,Copper (Globex): December 2025,0.0005,12.5,True,F.US.CPE
-CON.F.US.GCE.Z25,GCZ5,Gold (Globex): December 2025,0.1,10.0,True,F.US.GCE
-CON.F.US.SIE.Z25,SIZ5,Silver (Globex): December 2025,0.005,25.0,True,F.US.SIE
-CON.F.US.SIL.Z25,SILZ5,Micro Silver: December 2025,0.005,5.0,True,F.US.SIL
-CON.F.US.PLE.F26,PLF6,Platinum (Globex): January 2026,0.1,5.0,True,F.US.PLE

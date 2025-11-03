@@ -1,3 +1,0 @@
-﻿id,name,description,tickSize,tickValue,activeContract,symbolId
-CON.F.US.GMET.X25,METX5,Micro Ether: November 2025,0.5,0.05,True,F.US.GMET
-CON.F.US.MBT.X25,MBTX5,Micro Bitcoin: November 2025,5.0,0.5,True,F.US.MBT

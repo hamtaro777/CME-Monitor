@@ -1,6 +1,0 @@
-﻿id,name,description,tickSize,tickValue,activeContract,symbolId
-CON.F.US.FVA.Z25,ZFZ5,5 Year US Treasury Notes (Globex): December 2025,0.0078125,7.8125,True,F.US.FVA
-CON.F.US.USA.Z25,ZBZ5,30yr US Treasury Bonds (Globex): December 2025,0.03125,31.25,True,F.US.USA
-CON.F.US.TYA.Z25,ZNZ5,10yr US Treasury Notes (Globex): December 2025,0.015625,15.625,True,F.US.TYA
-CON.F.US.TUA.Z25,ZTZ5,2 Year US Treasury Note (Globex): December 2025,0.00390625,7.8125,True,F.US.TUA
-CON.F.US.ULA.Z25,UBZ5,Ultra T-Bond (Globex): December 2025,0.03125,31.25,True,F.US.ULA
